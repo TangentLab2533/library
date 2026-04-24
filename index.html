@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>格罗布书库 - Global Library</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            background-color: #f0f8ff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 顶部标题 */
+        .header {
+            width: 100%;
+            padding: 22px 0;
+            background: linear-gradient(135deg, #ffc0cb, #add8e6);
+            text-align: center;
+            color: #333;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .header p {
+            margin-top: 5px;
+            font-size: 16px;
+            color: #555;
+        }
+
+        /* 搜索框区域 */
+        .search-box {
+            margin-top: 50px;
+            width: 90%;
+            max-width: 700px;
+            text-align: center;
+        }
+
+        #search-input {
+            width: 100%;
+            height: 50px;
+            padding: 0 20px;
+            font-size: 18px;
+            border: 2px solid #add8e6;
+            border-radius: 30px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        #search-input:focus {
+            border-color: #ffc0cb;
+            box-shadow: 0 0 10px #ffc0cb80;
+        }
+
+        /* 结果展示区 */
+        .result-box {
+            margin-top: 30px;
+            width: 90%;
+            max-width: 700px;
+            padding-bottom: 100px;
+        }
+
+        .book-item {
+            background: white;
+            padding: 16px 22px;
+            margin-bottom: 12px;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: 0.2s;
+        }
+
+        .book-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        .book-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .book-links a {
+            display: inline-block;
+            margin-right: 10px;
+            padding: 6px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .pdf-link {
+            background: #ffc0cb;
+            color: #333;
+        }
+
+        .html-link {
+            background: #add8e6;
+            color: #333;
+        }
+
+        /* 底部版权 */
+        .footer {
+            margin-top: auto;
+            width: 100%;
+            padding: 18px 0;
+            text-align: center;
+            background: #f8e8f0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #ff80b0;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 顶部 -->
+    <div class="header">
+        <h1>格罗布书库</h1>
+        <p>Global Library</p>
+    </div>
+
+    <!-- 搜索框 -->
+    <div class="search-box">
+        <input type="text" id="search-input" placeholder="请输入书名搜索..." autocomplete="off">
+    </div>
+
+    <!-- 搜索结果 -->
+    <div class="result-box" id="result-box"></div>
+
+    <!-- 底部 -->
+    <div class="footer">
+        © 2025 <a href="https://tangentlab.cn" target="_blank">TangentLab</a> 版权所有
+    </div>
+
+    <script>
+        // 读取书籍数据
+        let bookList = [];
+
+        // 加载 index.txt
+        async function loadBookData() {
+            try {
+                const response = await fetch("index.txt");
+                const text = await response.text();
+                parseBookData(text);
+            } catch (err) {
+                console.log("读取书籍数据失败", err);
+            }
+        }
+
+        // 解析书籍格式
+        function parseBookData(text) {
+            const lines = text.trim().split("\n");
+            bookList = lines.map(line => {
+                const [namePart, pathPart] = line.split(":");
+                const [pdf, html] = pathPart.split(",");
+                return {
+                    name: namePart.trim(),
+                    pdf: pdf.trim(),
+                    html: html.trim()
+                };
+            });
+        }
+
+        // 搜索功能
+        function searchBook() {
+            const keyword = document.getElementById("search-input").value.trim();
+            const resultBox = document.getElementById("result-box");
+            resultBox.innerHTML = "";
+
+            if (!keyword) return;
+
+            const result = bookList.filter(book => 
+                book.name.includes(keyword)
+            );
+
+            if (result.length === 0) {
+                resultBox.innerHTML = `<div style="text-align:center; color:#666;">未找到相关书籍</div>`;
+                return;
+            }
+
+            result.forEach(book => {
+                const item = document.createElement("div");
+                item.className = "book-item";
+                item.innerHTML = `
+                    <div class="book-title">${book.name}</div>
+                    <div class="book-links">
+                        <a href="${book.pdf}" target="_blank" class="pdf-link">阅读PDF</a>
+                        <a href="${book.html}" target="_blank" class="html-link">查看介绍</a>
+                    </div>
+                `;
+                resultBox.appendChild(item);
+            });
+        }
+
+        // 监听输入
+        document.getElementById("search-input").addEventListener("input", searchBook);
+
+        // 初始化
+        window.onload = loadBookData;
+    </script>
+</body>
+</html>
