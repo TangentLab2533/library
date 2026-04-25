@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>index.txt 格式检测工具</title>
+    <title>格罗布书库 - 完整检测工具</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
         }
 
         body {
-            background: #f5f8ff;
+            background: #f7faff;
             padding: 30px;
             max-width: 900px;
             margin: 0 auto;
@@ -22,124 +22,172 @@
         .title {
             font-size: 26px;
             font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .sub-title {
+            color: #666;
             margin-bottom: 20px;
-            color: #222;
         }
 
         .btn {
-            padding: 10px 20px;
-            background: #4299e1;
-            color: white;
+            padding: 10px 22px;
+            background: #48a0ff;
+            color: #fff;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 16px;
             cursor: pointer;
-            margin-bottom: 25px;
+            margin-bottom: 30px;
         }
 
         .btn:hover {
             background: #3182ce;
         }
 
-        .line {
-            padding: 12px 16px;
-            border-radius: 8px;
+        .item {
+            padding: 14px 18px;
+            border-radius: 10px;
             margin-bottom: 10px;
-            font-size: 15px;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
         .ok {
-            background: #e6ffed;
-            color: #007d2a;
+            background: #e6ffe6;
+            color: #006600;
         }
 
         .error {
             background: #ffe6e6;
-            color: #c53030;
-            border-left: 5px solid #f56565;
+            color: #cc0000;
+            border-left: 6px solid #ff4444;
         }
 
         .tip {
             background: #fff9e6;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 25px;
-            line-height: 1.6;
+            padding: 16px;
+            border-radius: 10px;
+            margin-top: 30px;
+            line-height: 1.7;
         }
     </style>
 </head>
 
 <body>
-    <div class="title">📝 index.txt 格式检测工具</div>
-    <button class="btn" onclick="checkTxt()">重新检测</button>
+    <div class="title">🔍 格罗布书库 完整检测工具</div>
+    <div class="sub-title">检测 index.txt 格式 + PDF/HTML 文件是否存在</div>
+
+    <button class="btn" onclick="startCheck()">🔄 重新检测</button>
     <div id="result"></div>
 
     <div class="tip">
-        <strong>✅ 正确格式：</strong>《书名》:xxx.pdf,xxx.html<br>
-        <strong>❌ 会报错的错误：</strong><br>
-        1. 把英文逗号 , 写成 ; <br>
-        2. 缺少英文冒号 : <br>
-        3. 空行、多余换行 <br>
-        4. 使用中文标点 ： ；
+        <strong>✅ 正确格式：</strong>《书名》:文件.pdf,介绍.html<br>
+        <strong>❌ 常见错误：</strong><br>
+        • 把 , 写成 ; <br>
+        • 把英文 : 写成中文 ：<br>
+        • PDF / HTML 文件不存在<br>
+        • 空行、多余换行
     </div>
 
     <script>
-        window.onload = checkTxt;
+        window.onload = startCheck;
 
-        async function checkTxt() {
+        async function startCheck() {
             const r = document.getElementById('result');
-            r.innerHTML = "⌛ 正在读取并检测 index.txt...";
+            r.innerHTML = "⏳ 正在检测中，请稍候...";
+
+            let output = '';
+            let allSuccess = true;
 
             try {
+                // 1. 读取 index.txt
                 const res = await fetch('./index.txt');
-                if (!res.ok) throw new Error("未找到 index.txt 文件");
-                
+                if (!res.ok) {
+                    r.innerHTML = `<div class="item error">❌ 未找到 index.txt 文件</div>`;
+                    return;
+                }
+
                 const text = await res.text();
                 const lines = text.split('\n');
-                let out = '';
 
-                lines.forEach((line, idx) => {
-                    const num = idx + 1;
+                // 2. 逐行检查
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    const lineNum = i + 1;
                     const content = line.trim();
 
                     // 空行
                     if (content === '') {
-                        out += `<div class="line error">第 ${num} 行：空行（建议删除）<br>内容：${line || '(空)'}</div>`;
-                        return;
+                        output += `<div class="item error">第 ${lineNum} 行：空行（建议删除）<br>内容：【空行】</div>`;
+                        allSuccess = false;
+                        continue;
                     }
 
-                    // 无冒号
+                    // 检查冒号
                     if (!line.includes(':')) {
-                        out += `<div class="line error">第 ${num} 行：缺少英文冒号 :<br>内容：${line}</div>`;
-                        return;
+                        output += `<div class="item error">第 ${lineNum} 行：缺少英文冒号 :<br>内容：${line}</div>`;
+                        allSuccess = false;
+                        continue;
                     }
 
-                    const [name, path] = line.split(':', 2);
-                    if (!path) {
-                        out += `<div class="line error">第 ${num} 行：冒号后无内容<br>内容：${line}</div>`;
-                        return;
+                    const [name, paths] = line.split(':', 2);
+                    if (!paths || paths.trim() === '') {
+                        output += `<div class="item error">第 ${lineNum} 行：冒号后无内容<br>内容：${line}</div>`;
+                        allSuccess = false;
+                        continue;
                     }
 
-                    // 无逗号
-                    if (!path.includes(',')) {
-                        out += `<div class="line error">第 ${num} 行：缺少英文逗号 , 或写成了 ;<br>内容：${line}</div>`;
-                        return;
+                    // 检查逗号
+                    if (!paths.includes(',')) {
+                        output += `<div class="item error">第 ${lineNum} 行：缺少英文逗号 , 或写成了 ;<br>内容：${line}</div>`;
+                        allSuccess = false;
+                        continue;
                     }
 
-                    const [pdf, htmlFile] = path.split(',', 2);
-                    if (!pdf || !htmlFile || pdf.trim() === '' || htmlFile.trim() === '') {
-                        out += `<div class="line error">第 ${num} 行：路径不完整<br>内容：${line}</div>`;
-                        return;
+                    const [pdfFile, htmlFile] = paths.split(',', 2).map(item => item.trim());
+                    if (!pdfFile || !htmlFile) {
+                        output += `<div class="item error">第 ${lineNum} 行：路径不完整<br>内容：${line}</div>`;
+                        allSuccess = false;
+                        continue;
                     }
 
-                    // 正常
-                    out += `<div class="line ok">第 ${num} 行：格式正确 ✅<br>内容：${line}</div>`;
-                });
+                    // 检查 PDF 是否存在
+                    const pdfExists = await checkFileExists(pdfFile);
+                    // 检查 HTML 是否存在
+                    const htmlExists = await checkFileExists(htmlFile);
 
-                r.innerHTML = out;
+                    if (!pdfExists && !htmlExists) {
+                        output += `<div class="item error">第 ${lineNum} 行：缺失 ${pdfFile} 和 ${htmlFile}<br>书名：${name}</div>`;
+                        allSuccess = false;
+                    } else if (!pdfExists) {
+                        output += `<div class="item error">第 ${lineNum} 行：缺失 ${pdfFile}<br>书名：${name}</div>`;
+                        allSuccess = false;
+                    } else if (!htmlExists) {
+                        output += `<div class="item error">第 ${lineNum} 行：缺失 ${htmlFile}<br>书名：${name}</div>`;
+                        allSuccess = false;
+                    } else {
+                        output += `<div class="item ok">第 ${lineNum} 行：✅ 格式正确 + 文件齐全<br>书名：${name}</div>`;
+                    }
+                }
+
+                if (allSuccess) {
+                    output = `<div class="item ok">✅ 全部检测通过！index.txt 格式正确，所有文件都存在！</div>` + output;
+                }
+
+                r.innerHTML = output;
+
             } catch (e) {
-                r.innerHTML = `<div class="line error">❌ 错误：${e.message}</div>`;
+                r.innerHTML = `<div class="item error">检测失败：${e.message}</div>`;
+            }
+        }
+
+        // 检查文件是否存在
+        async function checkFileExists(filename) {
+            try {
+                const res = await fetch('./' + filename);
+                return res.ok;
+            } catch {
+                return false;
             }
         }
     </script>
