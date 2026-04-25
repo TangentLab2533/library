@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>格罗布书库 - 完整检测工具</title>
+    <title>书库检测工具（安全版）</title>
     <style>
         * {
             margin: 0;
@@ -30,7 +30,7 @@
             margin-bottom: 20px;
         }
 
-        .btn {
+        #checkBtn {
             padding: 10px 22px;
             background: #48a0ff;
             color: #fff;
@@ -41,7 +41,7 @@
             margin-bottom: 30px;
         }
 
-        .btn:hover {
+        #checkBtn:hover {
             background: #3182ce;
         }
 
@@ -75,9 +75,9 @@
 
 <body>
     <div class="title">🔍 格罗布书库 完整检测工具</div>
-    <div class="sub-title">检测 index.txt 格式 + PDF/HTML 文件是否存在</div>
+    <div class="sub-title">检测 index.txt 格式 + PDF / HTML 文件是否存在</div>
 
-    <button class="btn" onclick="startCheck()">🔄 重新检测</button>
+    <button id="checkBtn">🔄 重新检测</button>
     <div id="result"></div>
 
     <div class="tip">
@@ -90,7 +90,12 @@
     </div>
 
     <script>
-        window.onload = startCheck;
+        // 安全版：无内联事件、无 eval、无 CSP 报错
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('checkBtn');
+            btn.addEventListener('click', startCheck);
+            startCheck(); // 打开自动检测
+        });
 
         async function startCheck() {
             const r = document.getElementById('result');
@@ -100,7 +105,6 @@
             let allSuccess = true;
 
             try {
-                // 1. 读取 index.txt
                 const res = await fetch('./index.txt');
                 if (!res.ok) {
                     r.innerHTML = `<div class="item error">❌ 未找到 index.txt 文件</div>`;
@@ -110,20 +114,17 @@
                 const text = await res.text();
                 const lines = text.split('\n');
 
-                // 2. 逐行检查
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i];
                     const lineNum = i + 1;
                     const content = line.trim();
 
-                    // 空行
                     if (content === '') {
-                        output += `<div class="item error">第 ${lineNum} 行：空行（建议删除）<br>内容：【空行】</div>`;
+                        output += `<div class="item error">第 ${lineNum} 行：空行（建议删除）</div>`;
                         allSuccess = false;
                         continue;
                     }
 
-                    // 检查冒号
                     if (!line.includes(':')) {
                         output += `<div class="item error">第 ${lineNum} 行：缺少英文冒号 :<br>内容：${line}</div>`;
                         allSuccess = false;
@@ -132,46 +133,36 @@
 
                     const [name, paths] = line.split(':', 2);
                     if (!paths || paths.trim() === '') {
-                        output += `<div class="item error">第 ${lineNum} 行：冒号后无内容<br>内容：${line}</div>`;
+                        output += `<div class="item error">第 ${lineNum} 行：冒号后无内容</div>`;
                         allSuccess = false;
                         continue;
                     }
 
-                    // 检查逗号
                     if (!paths.includes(',')) {
                         output += `<div class="item error">第 ${lineNum} 行：缺少英文逗号 , 或写成了 ;<br>内容：${line}</div>`;
                         allSuccess = false;
                         continue;
                     }
 
-                    const [pdfFile, htmlFile] = paths.split(',', 2).map(item => item.trim());
-                    if (!pdfFile || !htmlFile) {
-                        output += `<div class="item error">第 ${lineNum} 行：路径不完整<br>内容：${line}</div>`;
-                        allSuccess = false;
-                        continue;
-                    }
+                    const [pdfFile, htmlFile] = paths.split(',').map(item => item.trim());
 
-                    // 检查 PDF 是否存在
-                    const pdfExists = await checkFileExists(pdfFile);
-                    // 检查 HTML 是否存在
-                    const htmlExists = await checkFileExists(htmlFile);
+                    const pdfExists = await checkFile(pdfFile);
+                    const htmlExists = await checkFile(htmlFile);
 
-                    if (!pdfExists && !htmlExists) {
-                        output += `<div class="item error">第 ${lineNum} 行：缺失 ${pdfFile} 和 ${htmlFile}<br>书名：${name}</div>`;
-                        allSuccess = false;
-                    } else if (!pdfExists) {
-                        output += `<div class="item error">第 ${lineNum} 行：缺失 ${pdfFile}<br>书名：${name}</div>`;
-                        allSuccess = false;
-                    } else if (!htmlExists) {
-                        output += `<div class="item error">第 ${lineNum} 行：缺失 ${htmlFile}<br>书名：${name}</div>`;
+                    let err = [];
+                    if (!pdfExists) err.push(pdfFile);
+                    if (!htmlExists) err.push(htmlFile);
+
+                    if (err.length > 0) {
+                        output += `<div class="item error">第 ${lineNum} 行：缺失文件 → ${err.join(', ')}</div>`;
                         allSuccess = false;
                     } else {
-                        output += `<div class="item ok">第 ${lineNum} 行：✅ 格式正确 + 文件齐全<br>书名：${name}</div>`;
+                        output += `<div class="item ok">第 ${lineNum} 行：✅ 正常 ${name}</div>`;
                     }
                 }
 
                 if (allSuccess) {
-                    output = `<div class="item ok">✅ 全部检测通过！index.txt 格式正确，所有文件都存在！</div>` + output;
+                    output = `<div class="item ok">✅ 全部检测通过！格式正确，文件齐全！</div>` + output;
                 }
 
                 r.innerHTML = output;
@@ -181,11 +172,10 @@
             }
         }
 
-        // 检查文件是否存在
-        async function checkFileExists(filename) {
+        async function checkFile(filename) {
             try {
-                const res = await fetch('./' + filename);
-                return res.ok;
+                const resp = await fetch('./' + filename, { method: 'HEAD' });
+                return resp.ok;
             } catch {
                 return false;
             }
