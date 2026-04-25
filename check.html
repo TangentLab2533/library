@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>index.txt 格式检测工具</title>
+    <style>
+        body {
+            font-family: Microsoft YaHei;
+            background: #f7f9fc;
+            padding: 30px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .line {
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+        .ok {
+            background: #e6f7e6;
+            color: #0a0;
+        }
+        .error {
+            background: #ffe6e6;
+            color: #a00;
+            border-left: 4px solid red;
+        }
+        .tip {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="title">📝 index.txt 格式自动检测工具</div>
+    <div id="result"></div>
+
+    <div class="tip">
+        <strong>✅ 正确格式：</strong>《书名》:文件.pdf,介绍.html<br>
+        <strong>❌ 常见错误：</strong>用了中文标点、把 , 写成 ;、缺少冒号、空行
+    </div>
+
+    <script>
+        async function checkTxt() {
+            const result = document.getElementById('result');
+            result.innerHTML = '正在读取 index.txt...';
+
+            try {
+                const res = await fetch('./index.txt');
+                const text = await res.text();
+                const lines = text.split('\n');
+                let html = '';
+
+                lines.forEach((line, index) => {
+                    const lineNum = index + 1;
+                    const content = line.trim();
+
+                    // 空行
+                    if (content === '') {
+                        html += `<div class="line error">第 ${lineNum} 行：空行（建议删除）</div>`;
+                        return;
+                    }
+
+                    // 检查是否包含 :
+                    if (!line.includes(':')) {
+                        html += `<div class="line error">第 ${lineNum} 行：缺少英文冒号 : → ${line}</div>`;
+                        return;
+                    }
+
+                    const [name, paths] = line.split(':');
+                    if (!paths) {
+                        html += `<div class="line error">第 ${lineNum} 行：格式不完整 → ${line}</div>`;
+                        return;
+                    }
+
+                    // 检查是否包含 ,
+                    if (!paths.includes(',')) {
+                        html += `<div class="line error">第 ${lineNum} 行：缺少英文逗号 , 或写成了 ; → ${line}</div>`;
+                        return;
+                    }
+
+                    const [pdf, htmlFile] = paths.split(',');
+                    if (!pdf || !htmlFile) {
+                        html += `<div class="line error">第 ${lineNum} 行：路径不完整 → ${line}</div>`;
+                        return;
+                    }
+
+                    // 全部通过
+                    html += `<div class="line ok">第 ${lineNum} 行：格式正确 ✅</div>`;
+                });
+
+                result.innerHTML = html;
+            } catch (e) {
+                result.innerHTML = `<div class="line error">读取失败：未找到 index.txt 文件</div>`;
+            }
+        }
+
+        window.onload = checkTxt;
+    </script>
+</body>
+</html>
